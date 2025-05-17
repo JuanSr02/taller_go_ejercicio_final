@@ -1,10 +1,12 @@
 package sales
 
 import (
-	"github.com/google/uuid"
-	"go.uber.org/zap"
+	"errors"
 	"math/rand"
 	"time"
+
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 // Service provides high-level sales management operations on a LocalStorage backend.
@@ -16,9 +18,12 @@ type Service struct {
 	logger *zap.Logger
 }
 
-// 0: pending, 1: approver, 2: rejected
+// 0: pending, 1: approved, 2: rejected
 // La forma mas facil que me salio pa que elija aleatoriamente en el create jeje
 var status_options = []string{"pending", "approved", "rejected"}
+
+// Para tener el error personalizado jeee
+var ErrInvalidStatus = errors.New("invalid status")
 
 // NewService creates a new Service.
 func NewService(storage Storage, logger *zap.Logger) *Service {
@@ -61,45 +66,38 @@ func (s *Service) Create(sales *Sales, user_id string, amount float32) error {
 	return nil
 }
 
-// Get retrieves a user by its ID.
-// Returns ErrNotFound if no user exists with the given ID.
-func (s *Service) Get(id string) (*User, error) {
-	return s.storage.Read(id)
-}
+func (s *Service) GetSales(user_id, status string) ([]*Sales, error) {
+	// Validar estado si fue dado
+	if status != "" {
+		validStatus := false
+		for _, st := range status_options {
+			if status == st {
+				validStatus = true
+				break
+			}
+		}
+		if !validStatus {
+			s.logger.Error("El estado dado es invalido", zap.String("status", status))
+			return nil, ErrInvalidStatus
+		}
+		sales, err := s.storage.GetByStatus(user_id, status)
+		if err != nil {
+			s.logger.Error("Error obteniendo ventas por estado",
+				zap.String("user_id", user_id),
+				zap.String("status", status),
+				zap.Error(err))
+			return nil, err
+		}
+		return sales, nil
+	}
 
-// Update modifies an existing user's data.
-// It updates Name, Address, NickName, sets UpdatedAt to now and increments Version.
-// Returns ErrNotFound if the user does not exist, or ErrEmptyID if user.ID is empty.
-func (s *Service) Update(id string, user *UpdateFields) (*User, error) {
-	existing, err := s.storage.Read(id)
+	// Si no se dio un estado, obtener todas las ventas
+	sales, err := s.storage.GetAll(user_id)
 	if err != nil {
+		s.logger.Error("Error obteniendo todas las ventas",
+			zap.String("user_id", user_id),
+			zap.Error(err))
 		return nil, err
 	}
-
-	if user.Name != nil {
-		existing.Name = *user.Name
-	}
-
-	if user.Address != nil {
-		existing.Address = *user.Address
-	}
-
-	if user.NickName != nil {
-		existing.NickName = *user.NickName
-	}
-
-	existing.UpdatedAt = time.Now()
-	existing.Version++
-
-	if err := s.storage.Set(existing); err != nil {
-		return nil, err
-	}
-
-	return existing, nil
-}
-
-// Delete removes a user from the system by its ID.
-// Returns ErrNotFound if the user does not exist.
-func (s *Service) Delete(id string) error {
-	return s.storage.Delete(id)
+	return sales, nil
 }

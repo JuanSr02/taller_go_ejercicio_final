@@ -19,6 +19,8 @@ type Storage interface {
 	Set(sales *Sales) error
 	Read(id string) (*Sales, error)
 	Delete(id string) error
+	GetAll(user_id string) ([]*Sales, error)
+	GetByStatus(user_id, status string) ([]*Sales, error)
 }
 
 // LocalStorage provides an in-memory implementation for storing sales.
@@ -65,4 +67,26 @@ func (l *LocalStorage) Delete(id string) error {
 
 	delete(l.m, id)
 	return nil
+}
+
+// GetAll retorna todas las ventas de un usuario dado su ID
+func (l *LocalStorage) GetAll(user_id string) ([]*Sales, error) {
+	var sales []*Sales
+	for _, s := range l.m {
+		if s.UserID == user_id {
+			sales = append(sales, s)
+		}
+	}
+	return sales, nil
+}
+
+// GetByStatus returns todas las ventas de un usuario dado su ID y filtrando por estado
+func (l *LocalStorage) GetByStatus(user_id, status string) ([]*Sales, error) {
+	var sales []*Sales
+	for _, s := range l.m {
+		if s.UserID == user_id && s.Status == status {
+			sales = append(sales, s)
+		}
+	}
+	return sales, nil
 }
