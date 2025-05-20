@@ -173,10 +173,17 @@ func (h *handler) handleGetSales(ctx *gin.Context) {
 
 	// Calcular metadata
 	var response SalesResponse
-	response.Results = salesList
-	response.Metadata.Quantity = len(salesList)
 
-	for _, s := range salesList {
+	// Asegurar que Results sea un array vacío si no hay ventas
+	if salesList == nil {
+		response.Results = []*sales.Sales{} // Inicializar como slice vacío
+	} else {
+		response.Results = salesList
+	}
+
+	response.Metadata.Quantity = len(response.Results) // Usar len del slice asignado
+
+	for _, s := range response.Results { // Iterar sobre response.Results
 		response.Metadata.TotalAmount += s.Amount
 		switch s.Status {
 		case "approved":
