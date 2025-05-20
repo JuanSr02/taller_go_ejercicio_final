@@ -37,9 +37,9 @@ func InitRoutes(e *gin.Engine) {
 	e.DELETE("/users/:id", h.handleDelete)
 
 	// Add new route
-	e.POST("/sales", h.handleCreateSale) // hacelo @luuLoyola
+	e.POST("/sales", h.handleCreateSales) // hacelo @luuLoyola
 	e.GET("/sales", h.handleGetSales)
-	e.PATCH("/sales", h.handleUpdateSale) // hacelo @fabriBauer
+	//e.PATCH("/sales", h.handleUpdateSales) // hacelo @fabriBauer
 
 	e.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{

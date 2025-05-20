@@ -2,11 +2,13 @@ package sales
 
 import (
 	"errors"
-	"math/rand"
-	"time"
-
+	"fmt"
+	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"math/rand"
+	"net/http"
+	"time"
 )
 
 // Service provides high-level sales management operations on a LocalStorage backend.
@@ -41,15 +43,26 @@ func NewService(storage Storage, logger *zap.Logger) *Service {
 // Create adds a brand-new sale to the system.
 // It sets CreatedAt and UpdatedAt to the current time and initializes Version to 1.
 // Returns ErrEmptyID if sales.ID is empty.
-func (s *Service) Create(sales *Sales, user_id string, amount float32) error {
+func (s *Service) Create(sales *Sales) error {
 	// Checks if the ID given is from a User that exits, else it will give an error
-	// falta get de user id
+	client := resty.New()
+
+	resp, err := client.R().
+		Get(fmt.Sprintf("http://localhost:8080/users/%s", sales.UserID))
+
+	if err != nil {
+		s.logger.Error("Ocurrio un error al buscar el ID del usuario", zap.Error(err))
+		return err
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		s.logger.Error("ID de Usuario dado no existe", zap.Error(err))
+		return ErrUserNotFound
+	}
+
 	sales.ID = uuid.NewString()
-	sales.UserID = user_id
-	if amount != 0 {
-		sales.Amount = amount
-	} else {
-		s.logger.Error("failed to set sale", zap.Error(ErrInvalidAmount), zap.Any("sales", sales))
+	if sales.Amount <= 0 {
+		s.logger.Error("Amount no puede ser un valor menor o igual a 0", zap.Error(ErrInvalidAmount), zap.Any("sales", sales))
 		return ErrInvalidAmount
 	}
 	sales.Status = status_options[rand.Intn(len(status_options))]
@@ -60,7 +73,7 @@ func (s *Service) Create(sales *Sales, user_id string, amount float32) error {
 	sales.Version = 1
 
 	if err := s.storage.Set(sales); err != nil {
-		s.logger.Error("failed to set sale", zap.Error(err), zap.Any("sales", sales))
+		s.logger.Error("Error al crear la venta", zap.Error(err), zap.Any("sales", sales))
 		return err
 	}
 	return nil

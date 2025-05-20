@@ -106,14 +106,6 @@ func (h *handler) handleDelete(ctx *gin.Context) {
 	ctx.Status(http.StatusNoContent)
 }
 
-func (h *handler) handleCreateSale(ctx *gin.Context) {
-	// TODO
-}
-
-func (h *handler) handleUpdateSale(ctx *gin.Context) {
-	// TODO
-}
-
 // El json que piden como respuesta del getSales
 type SalesResponse struct {
 	Metadata struct {
@@ -124,6 +116,36 @@ type SalesResponse struct {
 		TotalAmount float32 `json:"total_amount"`
 	} `json:"metadata"`
 	Results []*sales.Sales `json:"results"`
+}
+
+// handleCreate handles POST /sales
+func (h *handler) handleCreateSales(ctx *gin.Context) {
+	// request payload
+	var req struct {
+		UserID string  `json:"user_id"`
+		Amount float32 `json:"amount"`
+	}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	s := &sales.Sales{
+		UserID: req.UserID,
+		Amount: req.Amount,
+	}
+	if err := h.salesService.Create(s); err != nil {
+		if errors.Is(err, sales.ErrUserNotFound) || errors.Is(err, sales.ErrInvalidAmount) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.logger.Info("sale created", zap.Any("sale", s))
+	ctx.JSON(http.StatusCreated, s)
 }
 
 func (h *handler) handleGetSales(ctx *gin.Context) {
@@ -151,10 +173,17 @@ func (h *handler) handleGetSales(ctx *gin.Context) {
 
 	// Calcular metadata
 	var response SalesResponse
-	response.Results = salesList
-	response.Metadata.Quantity = len(salesList)
 
-	for _, s := range salesList {
+	// Asegurar que Results sea un array vacío si no hay ventas
+	if salesList == nil {
+		response.Results = []*sales.Sales{} // Inicializar como slice vacío
+	} else {
+		response.Results = salesList
+	}
+
+	response.Metadata.Quantity = len(response.Results) // Usar len del slice asignado
+
+	for _, s := range response.Results { // Iterar sobre response.Results
 		response.Metadata.TotalAmount += s.Amount
 		switch s.Status {
 		case "approved":
