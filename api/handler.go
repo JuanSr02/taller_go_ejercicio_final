@@ -135,7 +135,7 @@ func (h *handler) handleCreateSales(ctx *gin.Context) {
 		Amount: req.Amount,
 	}
 	if err := h.salesService.Create(s); err != nil {
-		if errors.Is(err, user.ErrNotFound) || errors.Is(err, sales.ErrInvalidAmount) {
+		if errors.Is(err, sales.ErrUserNotFound) || errors.Is(err, sales.ErrInvalidAmount) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

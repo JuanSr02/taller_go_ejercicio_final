@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"math/rand"
+	"net/http"
 	"time"
 )
 
@@ -46,12 +47,17 @@ func (s *Service) Create(sales *Sales) error {
 	// Checks if the ID given is from a User that exits, else it will give an error
 	client := resty.New()
 
-	_, err := client.R().
+	resp, err := client.R().
 		Get(fmt.Sprintf("http://localhost:8080/users/%s", sales.UserID))
 
 	if err != nil {
-		s.logger.Error("ID de Usuario dado no existe", zap.Error(err))
+		s.logger.Error("Ocurrio un error al buscar el ID del usuario", zap.Error(err))
 		return err
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		s.logger.Error("ID de Usuario dado no existe", zap.Error(err))
+		return ErrUserNotFound
 	}
 
 	sales.ID = uuid.NewString()
