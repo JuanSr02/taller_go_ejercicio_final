@@ -126,6 +126,36 @@ type SalesResponse struct {
 	Results []*sales.Sales `json:"results"`
 }
 
+// handleCreate handles POST /sales
+func (h *handler) handleCreateSales(ctx *gin.Context) {
+	// request payload
+	var req struct {
+		UserID string  `json:"user_id"`
+		Amount float32 `json:"amount"`
+	}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	s := &sales.Sales{
+		UserID: req.UserID,
+		Amount: req.Amount,
+	}
+	if err := h.salesService.Create(s); err != nil {
+		if errors.Is(err, user.ErrNotFound) || errors.Is(err, sales.ErrInvalidAmount) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.logger.Info("sale created", zap.Any("sale", s))
+	ctx.JSON(http.StatusCreated, s)
+}
+
 func (h *handler) handleGetSales(ctx *gin.Context) {
 	user_id := ctx.Query("user_id")
 	status := ctx.Query("status")

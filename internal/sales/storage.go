@@ -8,9 +8,6 @@ var ErrNotFound = errors.New("sale not found")
 // ErrEmptyID is returned when trying to store a sale with an empty ID.
 var ErrEmptyID = errors.New("empty sale ID")
 
-// ErrInvalidID is returned when trying to store a sale with an user ID that does not exist.
-var ErrInvalidID = errors.New("user ID does not exist")
-
 // ErrInvalidAmount is returned when trying to store a sale with an invalid Amount.
 var ErrInvalidAmount = errors.New("user ID does not exist")
 
