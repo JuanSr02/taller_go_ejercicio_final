@@ -106,14 +106,6 @@ func (h *handler) handleDelete(ctx *gin.Context) {
 	ctx.Status(http.StatusNoContent)
 }
 
-func (h *handler) handleCreateSale(ctx *gin.Context) {
-	// TODO
-}
-
-func (h *handler) handleUpdateSale(ctx *gin.Context) {
-	// TODO
-}
-
 // El json que piden como respuesta del getSales
 type SalesResponse struct {
 	Metadata struct {

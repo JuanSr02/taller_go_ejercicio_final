@@ -9,7 +9,7 @@ var ErrNotFound = errors.New("sale not found")
 var ErrEmptyID = errors.New("empty sale ID")
 
 // ErrInvalidAmount is returned when trying to store a sale with an invalid Amount.
-var ErrInvalidAmount = errors.New("user ID does not exist")
+var ErrInvalidAmount = errors.New("invalid amount")
 
 // Storage is the main interface for our storage layer.
 type Storage interface {

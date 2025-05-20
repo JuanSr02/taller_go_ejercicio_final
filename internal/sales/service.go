@@ -45,6 +45,7 @@ func NewService(storage Storage, logger *zap.Logger) *Service {
 func (s *Service) Create(sales *Sales) error {
 	// Checks if the ID given is from a User that exits, else it will give an error
 	client := resty.New()
+
 	_, err := client.R().
 		Get(fmt.Sprintf("http://localhost:8080/users/%s", sales.UserID))
 
