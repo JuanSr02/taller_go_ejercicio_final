@@ -197,3 +197,53 @@ func (h *handler) handleGetSales(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, response)
 }
+
+func (h *handler) handleUpdateSales(ctx *gin.Context) {
+	sale_id := ctx.Param("id") // cambie aca para usar Param en lugar de Query
+
+	if sale_id == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "id es requerido"})
+		return
+	}
+
+	var req struct {
+		Status string `json:"status"`
+	}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validar que el status esté presente
+	if req.Status == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "status es requerido"})
+		return
+	}
+
+	// Actualizar la venta
+	updatedSale, err := h.salesService.Update(sale_id, req.Status)
+	if err != nil {
+		if errors.Is(err, sales.ErrNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "sale not found"})
+			return
+		}
+		if errors.Is(err, sales.ErrInvalidStatus) || errors.Is(err, sales.ErrEmptyID) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, sales.ErrInvalidTransition) {
+			ctx.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+
+		h.logger.Error("error actualizando venta",
+			zap.String("sale_id", sale_id),
+			zap.String("status", req.Status),
+			zap.Error(err))
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	h.logger.Info("sale updated", zap.Any("sale", updatedSale))
+	ctx.JSON(http.StatusOK, updatedSale)
+}

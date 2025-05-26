@@ -39,7 +39,7 @@ func InitRoutes(e *gin.Engine) {
 	// Add new route
 	e.POST("/sales", h.handleCreateSales) // hacelo @luuLoyola
 	e.GET("/sales", h.handleGetSales)
-	//e.PATCH("/sales", h.handleUpdateSales) // hacelo @fabriBauer
+	e.PATCH("/sales/:id", h.handleUpdateSales) // hacelo @fabriBauer
 
 	e.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{

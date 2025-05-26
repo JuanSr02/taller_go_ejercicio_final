@@ -3,12 +3,13 @@ package sales
 import (
 	"errors"
 	"fmt"
-	"github.com/go-resty/resty/v2"
-	"github.com/google/uuid"
-	"go.uber.org/zap"
 	"math/rand"
 	"net/http"
 	"time"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 // Service provides high-level sales management operations on a LocalStorage backend.
@@ -26,6 +27,7 @@ var status_options = []string{"pending", "approved", "rejected"}
 
 // Para tener el error personalizado jeee
 var ErrInvalidStatus = errors.New("invalid status")
+var ErrInvalidTransition = errors.New("invalid status transition")
 
 // NewService creates a new Service.
 func NewService(storage Storage, logger *zap.Logger) *Service {
@@ -113,4 +115,70 @@ func (s *Service) GetSales(user_id, status string) ([]*Sales, error) {
 		return nil, err
 	}
 	return sales, nil
+}
+
+func (s *Service) Update(saleID string, newStatus string) (*Sales, error) {
+	// Validar que el ID no esté vacío
+	if saleID == "" {
+		s.logger.Error("ID de venta está vacío")
+		return nil, ErrEmptyID
+	}
+
+	// Validar que el nuevo estado sea válido
+	validStatus := false
+	for _, st := range status_options {
+		if newStatus == st {
+			validStatus = true
+			break
+		}
+	}
+	if !validStatus {
+		s.logger.Error("El estado dado es inválido", zap.String("status", newStatus))
+		return nil, ErrInvalidStatus
+	}
+
+	// Obtener la venta actual
+	sale, err := s.storage.Read(saleID)
+	if err != nil {
+		s.logger.Error("Error obteniendo venta para actualizar",
+			zap.String("sale_id", saleID),
+			zap.Error(err))
+		return nil, err
+	}
+
+	// Validar transición: solo se puede cambiar desde "pending"
+	if sale.Status != "pending" {
+		s.logger.Error("Transición inválida: la venta no está en estado pending",
+			zap.String("sale_id", saleID),
+			zap.String("current_status", sale.Status),
+			zap.String("new_status", newStatus))
+		return nil, ErrInvalidTransition
+	}
+
+	// Validar que solo se pueda cambiar a "approved" o "rejected"
+	if newStatus != "approved" && newStatus != "rejected" {
+		s.logger.Error("Solo se puede cambiar de pending a approved o rejected",
+			zap.String("sale_id", saleID),
+			zap.String("new_status", newStatus))
+		return nil, ErrInvalidTransition
+	}
+
+	// Actualizar la venta
+	sale.Status = newStatus
+	sale.UpdatedAt = time.Now()
+	sale.Version++
+
+	// Guardar la venta actualizada
+	if err := s.storage.Set(sale); err != nil {
+		s.logger.Error("Error actualizando la venta",
+			zap.String("sale_id", saleID),
+			zap.Error(err))
+		return nil, err
+	}
+
+	s.logger.Info("Venta actualizada exitosamente",
+		zap.String("sale_id", saleID),
+		zap.String("new_status", newStatus))
+
+	return sale, nil
 }
