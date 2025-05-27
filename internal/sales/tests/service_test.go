@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func TestService_Create_Simple(t *testing.T) {
+func TestService_Create_UserNotFound(t *testing.T) {
 	mockHandler := http.NewServeMux()
 	mockServer := httptest.NewServer(mockHandler)
 	defer mockServer.Close()
