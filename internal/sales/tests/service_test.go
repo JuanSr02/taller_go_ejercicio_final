@@ -2,10 +2,12 @@ package tests
 
 import (
 	"ej_final/internal/sales"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestService_Create_Simple(t *testing.T) {
@@ -13,7 +15,7 @@ func TestService_Create_Simple(t *testing.T) {
 	mockServer := httptest.NewServer(mockHandler)
 	defer mockServer.Close()
 
-	s := sales.NewService(sales.NewLocalStorage(), nil, mockServer.URL)
+	s := sales.NewService(sales.NewLocalStorage(), zap.NewNop(), mockServer.URL)
 
 	input := &sales.Sales{
 		UserID: "Pepe",
