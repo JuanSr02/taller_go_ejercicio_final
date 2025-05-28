@@ -28,7 +28,7 @@ func TestService_Integracion_HappyPath(t *testing.T) {
 	api.InitRoutes(r, server.URL) // URL base para las llamadas entre servicios
 	var createdUser user.User
 	var createdSale sales.Sales
-	w := httptest.NewRecorder()
+	userRecorder := httptest.NewRecorder()
 
 	// 1. Crear un usuario para luego crear una venta para el mismo (POST /users y POST /sales)
 	userData := map[string]string{
@@ -37,10 +37,10 @@ func TestService_Integracion_HappyPath(t *testing.T) {
 		"nickname": "simplementeJuancito",
 	}
 	userBody, _ := json.Marshal(userData)
-	req, _ := http.NewRequest(http.MethodPost, "/users", bytes.NewBuffer(userBody))
-	r.ServeHTTP(w, req)
+	userReq, _ := http.NewRequest(http.MethodPost, "/users", bytes.NewBuffer(userBody))
+	r.ServeHTTP(userRecorder, userReq)
 
-	json.Unmarshal(w.Body.Bytes(), &createdUser)
+	json.Unmarshal(userRecorder.Body.Bytes(), &createdUser)
 
 	// Usuario creado y parseado a la variable createdUser, ahora creo venta
 	saleData := map[string]interface{}{
@@ -49,15 +49,16 @@ func TestService_Integracion_HappyPath(t *testing.T) {
 	}
 	saleBody, _ := json.Marshal(saleData)
 
-	req, _ = http.NewRequest(http.MethodPost, "/sales", bytes.NewBuffer(saleBody))
+	saleReq, _ := http.NewRequest(http.MethodPost, "/sales", bytes.NewBuffer(saleBody))
 
-	r.ServeHTTP(w, req)
+	saleRecorder := httptest.NewRecorder()
+	r.ServeHTTP(saleRecorder, saleReq)
 
 	// Una vez creada la venta, chequeo con asserts que me devuelve lo correcto.
 
-	assert.Equal(t, http.StatusCreated, w.Code)
+	assert.Equal(t, http.StatusCreated, saleRecorder.Code)
 
-	err := json.Unmarshal(w.Body.Bytes(), &createdSale)
+	err := json.Unmarshal(saleRecorder.Body.Bytes(), &createdSale)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, createdSale.ID)
 	assert.Equal(t, createdUser.ID, createdSale.UserID)
@@ -69,46 +70,57 @@ func TestService_Integracion_HappyPath(t *testing.T) {
 	// 2. Actualizar el estado de la venta (PATCH /sales/:id)
 	// Solo actualizar si la venta está en estado pending (puede ser aleatorio)
 	// Para asegurar que entre siempre a patchear creamos ventas hasta que haya una pending.
-	isNotPending := true
-	for isNotPending {
+	maxAttempts := 10 // Evitar bucle infinito
+	attempts := 0
+
+	for attempts < maxAttempts {
 		if createdSale.Status == "pending" {
-			isNotPending = false
 			updateData := map[string]string{
 				"status": "approved",
 			}
 			updateBody, _ := json.Marshal(updateData)
 
-			req, _ = http.NewRequest(http.MethodPatch, "/sales/"+createdSale.ID, bytes.NewBuffer(updateBody))
+			// Crear un nuevo recorder para esta petición
+			patchRecorder := httptest.NewRecorder()
+			patchReq, _ := http.NewRequest(http.MethodPatch, "/sales/"+createdSale.ID, bytes.NewBuffer(updateBody))
+			r.ServeHTTP(patchRecorder, patchReq)
 
-			r.ServeHTTP(w, req)
-
-			// Una vez que se hizo el patch chequeamos con asserts.
-
-			assert.Equal(t, http.StatusOK, w.Code)
+			assert.Equal(t, http.StatusOK, patchRecorder.Code)
 
 			var updatedSale sales.Sales
-			err = json.Unmarshal(w.Body.Bytes(), &updatedSale)
+			err = json.Unmarshal(patchRecorder.Body.Bytes(), &updatedSale)
 			assert.NoError(t, err)
 			assert.Equal(t, "approved", updatedSale.Status)
-		} else {
-			// Si no es pending, creamos otra venta hasta que salga pending y actualizamos contadores
-			req, _ = http.NewRequest(http.MethodPost, "/sales", bytes.NewBuffer(saleBody))
-			r.ServeHTTP(w, req)
-			_ = json.Unmarshal(w.Body.Bytes(), &createdSale)
-			quantity_sales++
-			amount_sales = createdSale.Amount + amount_sales
+			break
 		}
+
+		// Crear nueva venta
+		pendingRecorder := httptest.NewRecorder()
+		pendingReq, _ := http.NewRequest(http.MethodPost, "/sales", bytes.NewBuffer(saleBody))
+		r.ServeHTTP(pendingRecorder, pendingReq)
+
+		err = json.Unmarshal(pendingRecorder.Body.Bytes(), &createdSale)
+		assert.NoError(t, err)
+
+		quantity_sales++
+		amount_sales += createdSale.Amount
+		attempts++
+	}
+
+	if attempts == maxAttempts {
+		t.Fatal("No se pudo encontrar una venta con estado 'pending' después de múltiples intentos")
 	}
 
 	// 3. Obtener las ventas del usuario (GET /sales?user_id=...)
-	req, _ = http.NewRequest(http.MethodGet, "/sales?user_id="+createdUser.ID, nil)
-	r.ServeHTTP(w, req)
+	req, _ := http.NewRequest(http.MethodGet, "/sales?user_id="+createdUser.ID, nil)
+	getRecorder := httptest.NewRecorder()
+	r.ServeHTTP(getRecorder, req)
 
 	// Chequeamos con asserts que el get traiga lo que corresponde, utilizando las variables para contar que utilizamos arriba
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, http.StatusOK, getRecorder.Code)
 
 	var response api.SalesResponse
-	err = json.Unmarshal(w.Body.Bytes(), &response)
+	err = json.Unmarshal(getRecorder.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, quantity_sales, response.Metadata.Quantity)
 	assert.InDelta(t, amount_sales, response.Metadata.TotalAmount, 0.1)
