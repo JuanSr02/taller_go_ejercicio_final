@@ -38,6 +38,7 @@ func TestService_Integracion_HappyPath(t *testing.T) {
 	}
 	userBody, _ := json.Marshal(userData)
 	userReq, _ := http.NewRequest(http.MethodPost, "/users", bytes.NewBuffer(userBody))
+	userReq.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(userRecorder, userReq)
 
 	json.Unmarshal(userRecorder.Body.Bytes(), &createdUser)
@@ -50,6 +51,7 @@ func TestService_Integracion_HappyPath(t *testing.T) {
 	saleBody, _ := json.Marshal(saleData)
 
 	saleReq, _ := http.NewRequest(http.MethodPost, "/sales", bytes.NewBuffer(saleBody))
+	saleReq.Header.Set("Content-Type", "application/json")
 
 	saleRecorder := httptest.NewRecorder()
 	r.ServeHTTP(saleRecorder, saleReq)
@@ -83,6 +85,7 @@ func TestService_Integracion_HappyPath(t *testing.T) {
 			// Crear un nuevo recorder para esta petición
 			patchRecorder := httptest.NewRecorder()
 			patchReq, _ := http.NewRequest(http.MethodPatch, "/sales/"+createdSale.ID, bytes.NewBuffer(updateBody))
+			patchReq.Header.Set("Content-Type", "application/json")
 			r.ServeHTTP(patchRecorder, patchReq)
 
 			assert.Equal(t, http.StatusOK, patchRecorder.Code)
@@ -97,6 +100,7 @@ func TestService_Integracion_HappyPath(t *testing.T) {
 		// Crear nueva venta
 		pendingRecorder := httptest.NewRecorder()
 		pendingReq, _ := http.NewRequest(http.MethodPost, "/sales", bytes.NewBuffer(saleBody))
+		pendingReq.Header.Set("Content-Type", "application/json")
 		r.ServeHTTP(pendingRecorder, pendingReq)
 
 		err = json.Unmarshal(pendingRecorder.Body.Bytes(), &createdSale)
