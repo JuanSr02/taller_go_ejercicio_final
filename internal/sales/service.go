@@ -19,6 +19,9 @@ type Service struct {
 
 	// logger is our observability component to log.
 	logger *zap.Logger
+
+	//baseURL
+	baseUrl string
 }
 
 // 0: pending, 1: approved, 2: rejected
@@ -30,7 +33,7 @@ var ErrInvalidStatus = errors.New("invalid status")
 var ErrInvalidTransition = errors.New("invalid status transition")
 
 // NewService creates a new Service.
-func NewService(storage Storage, logger *zap.Logger) *Service {
+func NewService(storage Storage, logger *zap.Logger, url string) *Service {
 	if logger == nil {
 		logger, _ = zap.NewProduction()
 		defer logger.Sync() // flushes buffer, if any
@@ -39,6 +42,7 @@ func NewService(storage Storage, logger *zap.Logger) *Service {
 	return &Service{
 		storage: storage,
 		logger:  logger,
+		baseUrl: url,
 	}
 }
 
@@ -48,9 +52,8 @@ func NewService(storage Storage, logger *zap.Logger) *Service {
 func (s *Service) Create(sales *Sales) error {
 	// Checks if the ID given is from a User that exits, else it will give an error
 	client := resty.New()
-
 	resp, err := client.R().
-		Get(fmt.Sprintf("http://localhost:8080/users/%s", sales.UserID))
+		Get(fmt.Sprintf("%s/users/%s", s.baseUrl, sales.UserID)) // http://localhost:8080
 
 	if err != nil {
 		s.logger.Error("Ocurrio un error al buscar el ID del usuario", zap.Error(err))

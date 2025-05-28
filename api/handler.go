@@ -12,7 +12,7 @@ import (
 
 type handler struct {
 	userService  *user.Service
-	salesService *sales.Service // Add this
+	salesService *sales.Service
 	logger       *zap.Logger
 }
 
@@ -148,6 +148,7 @@ func (h *handler) handleCreateSales(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, s)
 }
 
+// handleGetSales handles GET /sales
 func (h *handler) handleGetSales(ctx *gin.Context) {
 	user_id := ctx.Query("user_id")
 	status := ctx.Query("status")
@@ -197,7 +198,7 @@ func (h *handler) handleGetSales(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, response)
 }
-
+// handleUpdateSales handles PATCH /sales
 func (h *handler) handleUpdateSales(ctx *gin.Context) {
 	sale_id := ctx.Param("id") // cambie aca para usar Param en lugar de Query
 

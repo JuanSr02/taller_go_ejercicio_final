@@ -12,7 +12,7 @@ import (
 // InitRoutes registers all user CRUD endpoints on the given Gin engine.
 // It initializes the storage, service, and handler, then binds each HTTP
 // method and path to the appropriate handler function.
-func InitRoutes(e *gin.Engine) {
+func InitRoutes(e *gin.Engine, url string) {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
@@ -22,7 +22,7 @@ func InitRoutes(e *gin.Engine) {
 
 	// Inicializar sales service
 	salesStorage := sales.NewLocalStorage()
-	salesService := sales.NewService(salesStorage, logger)
+	salesService := sales.NewService(salesStorage, logger,url)
 
 	h := handler{
 		userService:  userService,
@@ -30,16 +30,13 @@ func InitRoutes(e *gin.Engine) {
 		logger:       logger,
 	}
 
-	// Existing routes
 	e.POST("/users", h.handleCreate)
 	e.GET("/users/:id", h.handleRead)
 	e.PATCH("/users/:id", h.handleUpdate)
 	e.DELETE("/users/:id", h.handleDelete)
-
-	// Add new route
-	e.POST("/sales", h.handleCreateSales) // hacelo @luuLoyola
+	e.POST("/sales", h.handleCreateSales)
 	e.GET("/sales", h.handleGetSales)
-	e.PATCH("/sales/:id", h.handleUpdateSales) // hacelo @fabriBauer
+	e.PATCH("/sales/:id", h.handleUpdateSales)
 
 	e.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
