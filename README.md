@@ -36,8 +36,7 @@ La API extiende un CRUD de usuarios existente y permite gestionar ventas con val
 ## 📦 Instalación y ejecución
 
 1. Clonar el repositorio:
-   git clone https://github.com/usuario/sales-api-go.git
-   cd sales-api-go
+   git clone https://github.com/JuanSr02/taller_go_ejercicio_final
 
 2. Instalar dependencias:
    go mod tidy
